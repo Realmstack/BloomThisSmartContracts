@@ -61,10 +61,7 @@ contract BloomThis is ERC721 {
         return baseUris[tokenId];
     }
 
-
-    function transferFrom(address _from, address _to, uint256 _tokenId) override public {
-        super.transferFrom(_from, _to, _tokenId);
-        
+    function transferToken(address _from, address _to, uint256 _tokenId) private {
         //delete token entry from previous user 
         _userTokens[_from][_tokenIndex[_tokenId]] = _userTokens[_from][_userTokens[_from].length -1];
         _tokenIndex[_userTokens[_from][_tokenIndex[_tokenId]]] = _tokenIndex[_tokenId];
@@ -73,6 +70,21 @@ contract BloomThis is ERC721 {
         //add token to index of new user
         _userTokens[_to].push(_tokenId);
         _tokenIndex[_tokenId] = _userTokens[_to].length - 1;
+    }
+
+    function transferFrom(address _from, address _to, uint256 _tokenId) override public {
+        super.transferFrom(_from, _to, _tokenId);
+        transferToken(_from, _to, _tokenId);
+    }
+
+    function safeTransferFrom(address _from, address _to, uint256 _tokenId) override public {
+        super.safeTransferFrom(_from, _to, _tokenId);
+        transferToken(_from, _to, _tokenId);
+    }
+
+    function safeTransferFrom(address _from, address _to, uint256 _tokenId, bytes memory data) override public {
+        super.safeTransferFrom(_from, _to, _tokenId, data);
+        transferToken(_from, _to, _tokenId);
     }
 
     function userTokens(address user) public view returns(uint256[] memory) {
