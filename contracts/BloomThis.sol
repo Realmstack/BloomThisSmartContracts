@@ -13,8 +13,6 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
     mapping(address=> uint8) public _admins;
 
     string private _contractURI;
-    uint96 _royaltyFeesInBips;
-    address _royaltyAddress;
     uint96 _ownerRoyaltyFeeInBips;
     uint256 _ownerBalance;
     address _treasury;
@@ -253,24 +251,9 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
     }
 
     function setRoyaltyInfo(address _receiver, uint96 royaltyFeesInBips, uint96 ownerRoyaltyFeeInBips, address treasury) public validAdmin {
-        _royaltyAddress = _receiver;
-        _royaltyFeesInBips = royaltyFeesInBips;
+        _setDefaultRoyalty(_receiver, royaltyFeesInBips);
         _ownerRoyaltyFeeInBips = ownerRoyaltyFeeInBips;
         _treasury = treasury;
-    }
-
-    function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
-        public
-        view
-        virtual
-        override
-        returns (address, uint256)
-    {
-        return (_royaltyAddress, calculateRoyalty(_salePrice));
-    }
-
-    function calculateRoyalty(uint256 _salePrice) view public returns (uint256) {
-        return (_salePrice / 10000) * _royaltyFeesInBips;
     }
 
     // withdraw owner royalty
