@@ -79,7 +79,7 @@ contract BloomThis is ERC721, Ownable {
         return mintTo(receiver, tokenURL, kind);
     }
 
-    //only admin can mint NFT for a receiver. he has to provice token url and kind
+    //Used to mint NFT for a receiver. he has to provice token url and kind
     function mintTo(address receiver, string memory tokenURL, uint8 kind) private returns (uint256) {
         if(_maxTokens > 0) {
             require(_maxTokens > _tokenCounter.current(), "Tokens exhausted");
