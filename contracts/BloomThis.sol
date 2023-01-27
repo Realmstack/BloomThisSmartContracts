@@ -12,6 +12,13 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
 
     mapping(address=> uint8) public _admins;
 
+    string private _contractURI;
+    uint96 _royaltyFeesInBips;
+    address _royaltyAddress;
+    uint96 _ownerRoyaltyFeeInBips;
+    uint256 _ownerBalance;
+    address _treasury;
+
     using Counters for Counters.Counter;
     Counters.Counter private _tokenCounter;
     bool public _transferable;
@@ -33,7 +40,9 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
     function receiveETH() payable public {
         require(msg.value > 0, "Cannot receive 0 ETH.");
         _ethBalance += msg.value;
-        _pendingReward += msg.value;
+        uint256 ownerPayout = (_ownerRoyaltyFeeInBips * msg.value / 1000);
+        _ownerBalance += ownerPayout;
+        _pendingReward += (msg.value - ownerPayout);
     }
 
     receive() payable external {
@@ -48,8 +57,12 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
         _adminList.push(msg.sender);
     }
 
-    function contractURI() public pure returns (string memory) {
-        return "https://to-be-provided-later.com";
+    function contractURI() public view returns (string memory) {
+        return _contractURI;
+    }
+
+    function setContractURI(string calldata uri) public validAdmin {
+        _contractURI = uri;
     }
 
     modifier validAdmin() {
@@ -239,7 +252,31 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
         return super.supportsInterface(interfaceId);
     }
 
-    function setRoyaltyInfo(address _receiver, uint96 _royaltyFeesInBips) public validAdmin {
-        _setDefaultRoyalty(_receiver, _royaltyFeesInBips);
+    function setRoyaltyInfo(address _receiver, uint96 royaltyFeesInBips, uint96 ownerRoyaltyFeeInBips, address treasury) public validAdmin {
+        _royaltyAddress = _receiver;
+        _royaltyFeesInBips = royaltyFeesInBips;
+        _ownerRoyaltyFeeInBips = ownerRoyaltyFeeInBips;
+        _treasury = treasury;
+    }
+
+    function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
+        public
+        view
+        virtual
+        override
+        returns (address, uint256)
+    {
+        return (_royaltyAddress, calculateRoyalty(_salePrice));
+    }
+
+    function calculateRoyalty(uint256 _salePrice) view public returns (uint256) {
+        return (_salePrice / 10000) * _royaltyFeesInBips;
+    }
+
+    // withdraw owner royalty
+    function withdraw() public validAdmin {
+        if(_ownerBalance > 0) {
+            payable(address(_treasury)).transfer(_ownerBalance);
+        }
     }
 }
