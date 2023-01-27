@@ -5,11 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "env $(cat .env) hh test",
-    "deployDev": "npx hardhat run --network goerli scripts/deploy-yug.js",
+    "deployDev": "npx hardhat run --network goerli scripts/deploy.js",
     "verify-1": "npx hardhat verify --network goerli",
-    "deploy-2": "env $(cat .env) npx hardhat run --network goerli scripts/deploy-yug.js",
+    "deploy-2": "env $(cat .env) npx hardhat run --network goerli scripts/deploy.js",
     "verify-2": "env $(cat .env) npx hardhat verify --network goerli <address>",
-    "fatten-sample" : "npx hardhat flatten contracts/YugERC721.sol > contracts/YugERC721_flat.sol"
+    "fatten-sample" : "npx hardhat flatten contracts/BloomThis.sol > contracts/BloomThis_flat.sol"
   },
   "author": "Arun",
   "license": "ISC",
@@ -25,8 +25,8 @@
     "hardhat": "^2.8.4"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.5.0",
-    "@openzeppelin/contracts-upgradeable": "^4.5.0",
+    "@openzeppelin/contracts": "^4.8.1",
+    "@openzeppelin/contracts-upgradeable": "^4.8.1",
     "@pancakeswap/pancake-swap-lib": "^0.0.4",
     "@uniswap/lib": "^4.0.1-alpha",
     "openzeppelin-solidity": "^4.5.0"

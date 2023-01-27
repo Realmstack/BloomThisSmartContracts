@@ -5,8 +5,10 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
-contract BloomThis is ERC721, Ownable {
+
+contract BloomThis is ERC721, Ownable, ERC2981 {
 
     mapping(address=> uint8) public _admins;
 
@@ -44,6 +46,10 @@ contract BloomThis is ERC721, Ownable {
         _maxTokens = maxTokens;
         _transferable = transferable;
         _adminList.push(msg.sender);
+    }
+
+    function contractURI() public pure returns (string memory) {
+        return "https://to-be-provided-later.com";
     }
 
     modifier validAdmin() {
@@ -224,5 +230,16 @@ contract BloomThis is ERC721, Ownable {
             }
             _perTokenCumulativeRewardForUser[user] = _perTokenCumulativeReward;
         }
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC2981) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
+
+    function setRoyaltyInfo(address _receiver, uint96 _royaltyFeesInBips) public validAdmin {
+        _setDefaultRoyalty(_receiver, _royaltyFeesInBips);
     }
 }

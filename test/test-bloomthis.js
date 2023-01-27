@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("BloomThis", function () {
-  it("Yug Test -5", async function () {
+  it("BloomThis -1", async function () {
     const [owner, addr1, addr2, addr3] = await ethers.getSigners();
 
     console.log(addr1.address);
