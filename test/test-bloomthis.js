@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 
 describe("BloomThis", function () {
   it("BloomThis -1", async function () {
-    const [owner, addr1, addr2, addr3] = await ethers.getSigners();
+    const [owner, addr1, addr2, addr3, addr4] = await ethers.getSigners();
 
     console.log(addr1.address);
     console.log(addr2.address);
@@ -23,6 +23,8 @@ describe("BloomThis", function () {
 
     let addr1Balance = await ethers.provider.getBalance(addr1.address);
     console.log("addr1 balance change", await ethers.provider.getBalance(addr1.address));
+
+    await _BloomThis.setRoyaltyInfo(100, 400, addr4.address);
 
     await owner.sendTransaction({
       to: _BloomThis.address,
@@ -60,8 +62,22 @@ describe("BloomThis", function () {
     await _BloomThis.addFusionRule(1, [7, 2, 1]);
     await _BloomThis.addFusionRule(2, [6, 1, 2]);
 
+    console.log("addr4 balance change", await ethers.provider.getBalance(addr4.address));
+    await _BloomThis.withdraw();
+
+    await owner.sendTransaction({
+      to: _BloomThis.address,
+      value: ethers.utils.parseEther("10.0"), // Sends exactly 1.0 ether
+      gasLimit: 21000000,
+    });
+
     await _BloomThis.connect(addr1).doFusion(1, [1, 2, 7]);
-    return;
+
+    console.log("addr1 balance change", await ethers.provider.getBalance(addr1.address));
+
+    console.log("addr4 balance change", await ethers.provider.getBalance(addr4.address));
+    await _BloomThis.withdraw();
+    console.log("addr4 balance change", await ethers.provider.getBalance(addr4.address));
 
     console.log("5 balance", await _BloomThis.connect(owner).getFusionUrisBalance(5));
   });
