@@ -19,6 +19,7 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
 
     using Counters for Counters.Counter;
     Counters.Counter private _tokenCounter;
+    Counters.Counter private _burnedCounter;
     bool public _transferable;
     address[] public _adminList;
 
@@ -34,6 +35,8 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
     uint256 public _perTokenCumulativeReward;
     uint256 public _pendingReward;
     uint256 public _ethBalance;
+
+    event RoyaltyFee (uint96 royaltyFeesInBips, uint96 ownerRoyaltyFeeInBips);
 
     function receiveETH() payable public {
         require(msg.value > 0, "Cannot receive 0 ETH.");
@@ -55,11 +58,11 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
         _adminList.push(msg.sender);
     }
 
-    function contractURI() public view returns (string memory) {
+    function contractURI() external view returns (string memory) {
         return _contractURI;
     }
 
-    function setContractURI(string calldata uri) public validAdmin {
+    function setContractURI(string calldata uri) external validAdmin {
         _contractURI = uri;
     }
 
@@ -69,16 +72,17 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
     }
 
     // Add or remove admin from admin list
-    function modifyAdmin(address adminAddress, bool add) validAdmin public {
+    function modifyAdmin(address adminAddress, bool add) validAdmin external {
         if(add) {
             _admins[adminAddress] = 1;
             _adminList.push(adminAddress);
         } else {
             require(adminAddress != msg.sender, "Cant remove self as admin");
             delete _admins[adminAddress];
-            for(uint256 i = 0; i < _adminList.length; i++) {
+            uint len = _adminList.length;
+            for(uint256 i = 0; i < len; i++) {
                 if(_adminList[i] == adminAddress) {
-                    _adminList[i] = _adminList[_adminList.length - 1];
+                    _adminList[i] = _adminList[len - 1];
                     _adminList.pop();
                     break;
                 }
@@ -88,16 +92,16 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
 
     // total supply of tokens
     function totalSupply() public view returns (uint256) {
-        return _tokenCounter.current();
+        return _tokenCounter.current() - _burnedCounter.current();
     }
 
     //only admin can mint NFT for a receiver. he has to provice token url and kind
-    function mint(address receiver, string memory tokenURL, uint8 kind) validAdmin public returns (uint256) {
-        return mintTo(receiver, tokenURL, kind);
+    function mint(address receiver, string memory tokenURL, uint8 kind) validAdmin external returns (uint256) {
+        return _mintTo(receiver, tokenURL, kind);
     }
 
     //Used to mint NFT for a receiver. he has to provice token url and kind
-    function mintTo(address receiver, string memory tokenURL, uint8 kind) private returns (uint256) {
+    function _mintTo(address receiver, string memory tokenURL, uint8 kind) private returns (uint256) {
         if(_maxTokens > 0) {
             require(_maxTokens > _tokenCounter.current(), "Tokens exhausted");
         }
@@ -114,12 +118,14 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
     }
 
     //burns a token, called by internal functions
-    function burn(uint _tokenId, address owner) private {
+    function _burnIt(uint _tokenId, address owner) private {
         super._burn(_tokenId);
 
         _userTokens[owner][_tokenIndex[_tokenId]] = _userTokens[owner][_userTokens[owner].length -1];
         _tokenIndex[_userTokens[owner][_tokenIndex[_tokenId]]] = _tokenIndex[_tokenId];
         _userTokens[owner].pop();
+
+        _burnedCounter.increment();
     }
 
     // returns token uri
@@ -128,13 +134,13 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
         return _tokenURIs[tokenId];
     }
 
-    function getKind(uint256 tokenId) public view returns (uint8) {
+    function getKind(uint256 tokenId) external view returns (uint8) {
         require(tokenId > 0 && tokenId <= _tokenCounter.current(), "Invalid token id");
         return _kind[tokenId];
     }
 
     // internal function handles user token list, when it is transferred to another user.
-    function transferToken(address _from, address _to, uint256 _tokenId) private {
+    function _transferToken(address _from, address _to, uint256 _tokenId) private {
         require(_transferable, "Transfer not allowed");
         issueRewards(_from);
         issueRewards(_to);
@@ -152,38 +158,38 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
     function transferFrom(address _from, address _to, uint256 _tokenId) override public {
         super.transferFrom(_from, _to, _tokenId);
 
-        transferToken(_from, _to, _tokenId);
+        _transferToken(_from, _to, _tokenId);
     }
 
     function safeTransferFrom(address _from, address _to, uint256 _tokenId) override public {
         super.safeTransferFrom(_from, _to, _tokenId);
-        transferToken(_from, _to, _tokenId);
+        _transferToken(_from, _to, _tokenId);
     }
 
     function safeTransferFrom(address _from, address _to, uint256 _tokenId, bytes memory data) override public {
         super.safeTransferFrom(_from, _to, _tokenId, data);
-        transferToken(_from, _to, _tokenId);
+        _transferToken(_from, _to, _tokenId);
     }
 
     //utility function provide all the tokens owned by an user
-    function userTokens(address user) public view returns(uint256[] memory) {
+    function userTokens(address user) external view returns(uint256[] memory) {
         return _userTokens[user];
     }
 
     //utitily function for admin to check if he has add enough fusion token uri(s) added or not
-    function getFusionUrisBalance(uint8 kind) public validAdmin view returns(uint256) {
+    function getFusionUrisBalance(uint8 kind) external validAdmin view returns(uint256) {
         return _tokenUrlReserve[kind].length;
     }
 
     //utitily function for admin to add fusion token uri
-    function addFusionUris(uint8 kind, string[] memory uris) public validAdmin {
+    function addFusionUris(uint8 kind, string[] memory uris) external validAdmin {
         for(uint8 i = 1; i < uris.length ; i++) {
             _tokenUrlReserve[kind].push(uris[i]);
         }
     }
 
     //utility function for admin to add fusion rule. where user may provide multiple token to smart contract and its burned by the contract and issues a new fusion token.
-    function addFusionRule(uint8 ruleNo, uint8[] memory rule) public validAdmin {
+    function addFusionRule(uint8 ruleNo, uint8[] memory rule) external validAdmin {
         require(ruleNo > 0, "Invalid rule No");
         if(rule.length > 0) {
             _rules[ruleNo] = rule;
@@ -193,7 +199,7 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
     }
 
     // function called by user with token ids he owns, this will burn those provided tokens and issue a new fusion token
-    function doFusion(uint8 ruleNo, uint8[] memory ids) public {
+    function doFusion(uint8 ruleNo, uint256[] memory ids) external {
         require(_rules[ruleNo].length > 0, "Invalid rule No");
 
         for(uint8 kind = 1; kind < _rules[ruleNo].length ; kind++) {
@@ -206,15 +212,18 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
             require(total == _rules[ruleNo][kind], "Invalid no of tokens provided.");
         }
 
-        for(uint8 i = 0; i < ids.length ; i++) {
+        require(_tokenUrlReserve[_rules[ruleNo][0]].length > 0, "Fusion Token data not available");
+
+        issueRewards(msg.sender);
+
+        for(uint256 i = 0; i < ids.length ; i++) {
             require(ownerOf(ids[i]) == msg.sender, "Invalid owner");
-            burn(ids[i], msg.sender);
+            _burnIt(ids[i], msg.sender);
         }
 
-        require(_tokenUrlReserve[_rules[ruleNo][0]].length > 0, "Fusion Token data not available");
         string memory uri = _tokenUrlReserve[_rules[ruleNo][0]][_tokenUrlReserve[_rules[ruleNo][0]].length - 1];
         _tokenUrlReserve[_rules[ruleNo][0]].pop();
-        mintTo(msg.sender, uri, _rules[ruleNo][0]);
+        _mintTo(msg.sender, uri, _rules[ruleNo][0]);
     }
 
 
@@ -250,16 +259,22 @@ contract BloomThis is ERC721, Ownable, ERC2981 {
         return super.supportsInterface(interfaceId);
     }
 
-    function setRoyaltyInfo(address _receiver, uint96 royaltyFeesInBips, uint96 ownerRoyaltyFeeInBips, address treasury) public validAdmin {
-        _setDefaultRoyalty(_receiver, royaltyFeesInBips);
+    //This sets royalty info for secondry sales. In this we set how much royalty will be taken from seconday sales and how much from it will be given to tresury
+    function setRoyaltyInfo(uint96 royaltyFeesInBips, uint96 ownerRoyaltyFeeInBips, address treasury) external validAdmin {
+        require(treasury != address(0) && royaltyFeesInBips <= 1000 && ownerRoyaltyFeeInBips <= 1000, "Wrong value");
+        _setDefaultRoyalty(address(this), royaltyFeesInBips);
         _ownerRoyaltyFeeInBips = ownerRoyaltyFeeInBips;
         _treasury = treasury;
+
+        emit RoyaltyFee (royaltyFeesInBips, ownerRoyaltyFeeInBips);
     }
 
     // withdraw owner royalty
-    function withdraw() public validAdmin {
-        if(_ownerBalance > 0) {
-            payable(address(_treasury)).transfer(_ownerBalance);
+    function withdraw() external validAdmin {
+        uint256 balance = _ownerBalance;
+        if(balance > 0) {
+            _ownerBalance = 0;
+            payable(address(_treasury)).transfer(balance);
         }
     }
 }
